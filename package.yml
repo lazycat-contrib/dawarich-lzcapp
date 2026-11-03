@@ -1,6 +1,6 @@
 package: community.lazycat.app.dawarich
 name: Dawarich
-version: 0.0.0
+version: 1.20.1
 description: "Self-hosted location history: collect your location data and browse it on a map, timeline and stats."
 min_os_version: "1.5.0"
 homepage: https://dawarich.app/

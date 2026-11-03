@@ -8,7 +8,6 @@ application:
   upstreams:
     - location: /
       backend: http://dawarich:3000/
-
 services:
   db:
     # PostGIS, not plain PostgreSQL: the app stores geography-typed columns.
@@ -25,7 +24,6 @@ services:
       timeout: 10s
       retries: 10
       start_period: 30s
-
   redis:
     image: docker.1ms.run/library/redis:8-alpine
     # Queue/cache only; nothing here needs to survive a restart.
@@ -35,9 +33,8 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
-
   dawarich:
-    # upstream: docker.io/freikin/dawarich:1.20.1
+    # upstream: freikin/dawarich:1.20.1
     image: docker.1ms.run/freikin/dawarich:1.20.1
     environment:
       - RAILS_ENV=production
@@ -72,7 +69,6 @@ services:
     depends_on:
       - db
       - redis
-
 usage: |
   Dawarich 是自托管的位置历史记录应用：把手机或其它设备上报的定位数据收集起来，
   在地图、时间线、统计和行程里回看自己去过哪里。

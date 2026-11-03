@@ -1,0 +1,88 @@
+application:
+  subdomain: dawarich
+  multi_instance: false
+  # The app ships its own account system (sign-up / sign-in page), so it is
+  # exposed directly and authenticates users itself.
+  public_path:
+    - /
+  upstreams:
+    - location: /
+      backend: http://dawarich:3000/
+
+services:
+  db:
+    # PostGIS, not plain PostgreSQL: the app stores geography-typed columns.
+    image: docker.1ms.run/postgis/postgis:17-3.5-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD={{ stable_secret "db_password" }}
+      - POSTGRES_DB=dawarich
+    binds:
+      - /lzcapp/var/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dawarich"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: docker.1ms.run/library/redis:8-alpine
+    # Queue/cache only; nothing here needs to survive a restart.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  dawarich:
+    # upstream: docker.io/freikin/dawarich:1.20.1
+    image: docker.1ms.run/freikin/dawarich:1.20.1
+    environment:
+      - RAILS_ENV=production
+      - SELF_HOSTED=true
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD={{ stable_secret "db_password" }}
+      - DATABASE_NAME=dawarich
+      - REDIS_URL=redis://redis:6379
+      # Upstream default is the literal string CHANGE_ME; leaving it in place
+      # would make sessions and encrypted attributes forgeable.
+      - SECRET_KEY_BASE={{ stable_secret "secret_key_base" }}
+      # Upstream only allows localhost by default; the reverse-proxied Host
+      # header would be rejected without the app domain listed here.
+      - APPLICATION_HOSTS={{ .S.AppDomain }}
+      - TIME_ZONE=Asia/Shanghai
+      - BACKGROUND_PROCESSING_CONCURRENCY=2
+      # Upstream disables email/password sign-up in self-hosted mode (family
+      # invitations only). Enabling it gives every user a first sign-up path.
+      - ALLOW_EMAIL_PASSWORD_REGISTRATION=true
+      - ALLOW_EMAIL_PASSWORD_LOGIN=true
+    binds:
+      - /lzcapp/var/storage:/var/app/storage
+      - /lzcapp/var/public:/var/app/public
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/v1/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+      start_period: 90s
+    depends_on:
+      - db
+      - redis
+
+usage: |
+  Dawarich 是自托管的位置历史记录应用：把手机或其它设备上报的定位数据收集起来，
+  在地图、时间线、统计和行程里回看自己去过哪里。
+
+  - 首次访问用邮箱和密码注册即可，注册后就是普通用户；应用自带账号体系，
+    所以它直接对外开放（public_path），登录与权限都由 Dawarich 自己负责。
+  - 后台由 PostgreSQL + PostGIS（存地理轨迹，普通 PostgreSQL 不够）和 Redis 组成，
+    三者都在应用内部，不需要你另外准备数据库。
+  - 位置数据需要你自己从设备上报：可用 OwnTracks 等客户端把位置推到这个应用的
+    API 地址，具体上报方式请参考 Dawarich 官方文档。
+  - 邮件发送未配置，账号相关通知需要你自己再接邮件服务。
+  - 未做真机验证：注册登录、位置上报入库、地图与时间线展示、重启后数据留存
+    均未在设备上实测。

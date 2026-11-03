@@ -1,0 +1,18 @@
+package: community.lazycat.app.dawarich
+name: Dawarich
+version: 0.0.0
+description: "Self-hosted location history: collect your location data and browse it on a map, timeline and stats."
+min_os_version: "1.5.0"
+homepage: https://dawarich.app/
+author: Evgenii Sokolov
+license: AGPL-3.0
+permissions:
+  required:
+    - net.internet
+locales:
+  zh:
+    name: Dawarich
+    description: "自托管位置历史：收集自己的位置数据，在地图、时间线和统计里查看。"
+  en:
+    name: Dawarich
+    description: "Self-hosted location history: collect your location data and browse it on a map, timeline and stats."
